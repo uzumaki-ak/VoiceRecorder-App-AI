@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- external files directory for recordings -->
+    <external-files-path name="recordings" path="VoiceVault/Recordings/" />
+    <external-files-path name="temp" path="VoiceVault/Temp/" />
+    <external-path name="external_files" path="." />
+</paths>

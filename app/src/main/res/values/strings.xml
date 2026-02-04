@@ -1,0 +1,67 @@
+<resources>
+    <string name="app_name">VoiceVault</string>
+
+    <!-- home screen -->
+    <string name="record">Record</string>
+    <string name="recording">Recording</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="stop">Stop</string>
+    <string name="list">List</string>
+
+    <!-- save dialog -->
+    <string name="save_recording">Save recording</string>
+    <string name="file_name">File name</string>
+    <string name="category">Category</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- list screen -->
+    <string name="all">All</string>
+    <string name="favorites">Favorites</string>
+    <string name="uncategorized">Uncategorized</string>
+    <string name="search">Search</string>
+    <string name="edit">Edit</string>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <string name="rename">Rename</string>
+    <string name="move">Move</string>
+
+    <!-- player screen -->
+    <string name="play">Play</string>
+    <string name="skip_silences">Skip silences</string>
+    <string name="repeat">Repeat</string>
+    <string name="speed">Speed</string>
+    <string name="bookmark">Bookmark</string>
+
+    <!-- settings screen -->
+    <string name="settings">Settings</string>
+    <string name="recording_quality">Recording quality</string>
+    <string name="block_calls_while_recording">Block calls while recording</string>
+    <string name="auto_play_next">Auto play next recording</string>
+    <string name="use_bluetooth_mic">Use Bluetooth mic when available</string>
+    <string name="storage_location">Storage location</string>
+    <string name="recycle_bin">Recycle bin</string>
+    <string name="save_recent_searches">Save recent searches</string>
+    <string name="about">About Voice Recorder</string>
+
+    <!-- chat screen -->
+    <string name="chat_with_ai">Chat with AI</string>
+    <string name="ask_about_recording">Ask about the recording...</string>
+    <string name="view_transcription">View transcription</string>
+    <string name="clear_conversation">Clear conversation</string>
+
+    <!-- api settings -->
+    <string name="api_settings">AI API Settings</string>
+    <string name="provider">Provider</string>
+    <string name="model">Model</string>
+    <string name="api_key">API Key</string>
+    <string name="test_connection">Test Connection</string>
+    <string name="connection_successful">Connection successful!</string>
+    <string name="connection_failed">Connection failed</string>
+
+    <!-- permissions -->
+    <string name="permission_required">Permission required</string>
+    <string name="audio_permission_required">Audio recording permission is required to use this app</string>
+    <string name="storage_permission_required">Storage permission is required to save recordings</string>
+</resources>

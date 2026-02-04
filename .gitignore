@@ -1,0 +1,76 @@
+# =========================
+# Android / Gradle
+# =========================
+.gradle/
+build/
+**/build/
+
+# Gradle wrapper JAR is usually committed
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local Gradle config
+gradle.properties
+
+# =========================
+# Android Studio / IntelliJ
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea/**
+
+# =========================
+# Local SDK & machine files
+# =========================
+local.properties
+sdk.dir
+ndk.dir
+
+# =========================
+# OS junk
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Logs & temp files
+# =========================
+*.log
+*.tmp
+*.swp
+
+# =========================
+# APK / AAB outputs
+# =========================
+*.apk
+*.aab
+
+# =========================
+# Kotlin / Java
+# =========================
+*.class
+
+# =========================
+# Native build outputs
+# =========================
+.externalNativeBuild/
+.cxx/
+
+# =========================
+# Firebase / Google services
+# =========================
+google-services.json
+
+# =========================
+# Secrets / env
+# =========================
+.env
+*.keystore
+*.jks
+
+# =========================
+# Testing / coverage
+# =========================
+coverage/
