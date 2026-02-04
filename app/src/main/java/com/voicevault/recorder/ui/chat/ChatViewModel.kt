@@ -70,21 +70,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             llmManager.initializeProvider()
 
-            // add system context
-            conversationHistory.add(
-                "system" to """You are a helpful assistant analyzing an audio recording transcription. 
-                    |The user can ask questions about the content, request summaries, find specific information, 
-                    |or ask about when certain topics were discussed.
-                    |
-                    |Transcription:
+            // FIXED: Using roles that are universally supported (user/assistant)
+            val systemContext = """You are a helpful assistant analyzing an audio recording transcription. 
+                    |Analyze the following transcription:
                     |$transcription
                 """.trimMargin()
-            )
+            
+            conversationHistory.add("user" to systemContext)
+            conversationHistory.add("assistant" to "I have analyzed the recording transcription. I'm ready to answer any questions you have about it.")
 
             // add initial greeting
             val greeting = ChatMessage(
                 id = UUID.randomUUID().toString(),
-                content = "I've loaded the transcription of your recording. What would you like to know about it?",
+                content = "I've analyzed your recording. What would you like to know about it?",
                 isUser = false,
                 timestamp = System.currentTimeMillis()
             )

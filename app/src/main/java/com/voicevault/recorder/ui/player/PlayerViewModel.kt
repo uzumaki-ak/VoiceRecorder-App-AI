@@ -13,6 +13,7 @@ import com.voicevault.recorder.data.repository.RecordingRepository
 import com.voicevault.recorder.domain.recorder.AudioPlayer
 import com.voicevault.recorder.domain.recorder.WaveformGenerator
 import com.voicevault.recorder.utils.Constants
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -44,6 +45,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private val _useSpeaker = MutableStateFlow(false)
     val useSpeaker: StateFlow<Boolean> = _useSpeaker.asStateFlow()
 
+    private var playbackJob: Job? = null
+    private var positionUpdateJob: Job? = null
+
     // loads recording for playback
     fun loadRecording(recordingId: Long) {
         viewModelScope.launch {
@@ -56,13 +60,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     // generate waveform
                     val waveform = waveformGenerator.generateWaveform(file)
 
-                    // load bookmarks
-                    bookmarkRepository.getBookmarksForRecording(recordingId).collect { bookmarks ->
-                        _playbackState.value = _playbackState.value.copy(
-                            duration = audioPlayer.duration.value,
-                            waveformData = waveform,
-                            bookmarks = bookmarks.map { b -> b.position }
-                        )
+                    _playbackState.value = _playbackState.value.copy(
+                        duration = audioPlayer.duration.value,
+                        waveformData = waveform
+                    )
+
+                    // load bookmarks in a separate job so it doesn't block the function
+                    viewModelScope.launch {
+                        bookmarkRepository.getBookmarksForRecording(recordingId).collect { bookmarks ->
+                            _playbackState.value = _playbackState.value.copy(
+                                bookmarks = bookmarks.map { b -> b.position }
+                            )
+                        }
                     }
 
                     startPlaybackPositionUpdate()
@@ -175,19 +184,25 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // FIXED: updates playback position continuously
+    // FIXED: updates playback position continuously and syncs isPlaying state
     private fun startPlaybackPositionUpdate() {
-        viewModelScope.launch {
+        playbackJob?.cancel()
+        playbackJob = viewModelScope.launch {
             audioPlayer.isPlaying.collect { isPlaying ->
                 _playbackState.value = _playbackState.value.copy(isPlaying = isPlaying)
+            }
+        }
 
-                while (isPlaying) {
+        positionUpdateJob?.cancel()
+        positionUpdateJob = viewModelScope.launch {
+            while (true) {
+                if (audioPlayer.isPlaying.value) {
                     audioPlayer.updatePosition()
                     _playbackState.value = _playbackState.value.copy(
                         currentPosition = audioPlayer.currentPosition.value
                     )
-                    delay(100)
                 }
+                delay(100)
             }
         }
     }
@@ -195,5 +210,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         super.onCleared()
         audioPlayer.release()
+        playbackJob?.cancel()
+        positionUpdateJob?.cancel()
     }
 }

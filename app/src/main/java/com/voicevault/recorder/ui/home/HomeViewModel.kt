@@ -44,6 +44,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // starts new recording
     fun startRecording() {
         viewModelScope.launch {
+            audioRecorder.reset()
+            waveformAmplitudes.clear()
+
             val quality = preferences.recordingQuality.first()
             val useSDCard = preferences.storageLocation.first() == Constants.STORAGE_SD_CARD
 
@@ -66,29 +69,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         audioRecorder.resumeRecording()
     }
 
-    // FIXED: preview function - plays recording from beginning while still recording
+    // preview function
     fun previewRecording() {
         viewModelScope.launch {
             currentRecordingFile?.let { file ->
                 try {
-                    // pause recording first
                     val wasPaused = audioRecorder.isPaused.value
-                    if (!wasPaused) {
-                        audioRecorder.pauseRecording()
-                    }
+                    if (!wasPaused) audioRecorder.pauseRecording()
 
-                    // play preview
                     previewPlayer?.release()
                     previewPlayer = MediaPlayer().apply {
                         setDataSource(file.absolutePath)
                         prepare()
                         start()
-
-                        // resume recording after preview
                         setOnCompletionListener {
-                            if (!wasPaused) {
-                                audioRecorder.resumeRecording()
-                            }
+                            if (!wasPaused) audioRecorder.resumeRecording()
                         }
                     }
                 } catch (e: Exception) {
@@ -106,7 +101,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _showSaveDialog.value = true
     }
 
-    // FIXED: properly dismiss save dialog
+    // properly dismiss save dialog
     fun dismissSaveDialog() {
         _showSaveDialog.value = false
         cancelRecording()
@@ -126,6 +121,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             currentRecordingFile?.let { file ->
                 val quality = preferences.recordingQuality.first()
+                
+                // Get duration from recorder but fallback to file metadata for accuracy
+                val recordedDuration = audioRecorder.recordingDuration.value
 
                 // rename file if needed
                 val finalFile = if (fileName != file.nameWithoutExtension) {
@@ -136,10 +134,22 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     file
                 }
 
+                // FIXED: Use MediaPlayer to get exact duration from the file if recorder value is 0
+                val finalDuration = try {
+                    val mp = MediaPlayer()
+                    mp.setDataSource(finalFile.absolutePath)
+                    mp.prepare()
+                    val d = mp.duration.toLong()
+                    mp.release()
+                    if (d > 0) d else recordedDuration
+                } catch (e: Exception) {
+                    recordedDuration
+                }
+
                 val recording = Recording(
                     fileName = fileName,
                     filePath = finalFile.absolutePath,
-                    duration = audioRecorder.recordingDuration.value,
+                    duration = finalDuration,
                     fileSize = FileUtils.getFileSize(finalFile.absolutePath),
                     createdAt = System.currentTimeMillis(),
                     categoryId = categoryId,
@@ -152,6 +162,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 _showSaveDialog.value = false
                 currentRecordingFile = null
                 waveformAmplitudes.clear()
+                audioRecorder.reset()
                 _recordingState.value = RecordingState.Idle
             }
         }
@@ -163,16 +174,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             while (audioRecorder.isRecording.value) {
                 audioRecorder.updateDuration()
 
-                // collect amplitude for waveform
                 val amplitude = audioRecorder.getMaxAmplitude()
                 waveformAmplitudes.add(amplitude)
 
-                // keep only last 100 samples for performance
                 if (waveformAmplitudes.size > 100) {
                     waveformAmplitudes.removeAt(0)
                 }
 
-                // normalize amplitudes to 0-1 range for display
                 val normalizedWaveform = waveformAmplitudes.map { it.toFloat() / 32767f }
 
                 _recordingState.value = RecordingState.Recording(
@@ -181,7 +189,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     waveformData = normalizedWaveform
                 )
 
-                delay(100) // update 10 times per second
+                delay(100)
             }
         }
     }

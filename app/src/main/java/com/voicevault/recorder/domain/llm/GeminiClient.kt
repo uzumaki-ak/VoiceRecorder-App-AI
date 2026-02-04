@@ -6,7 +6,7 @@ import com.voicevault.recorder.utils.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-// gemini api client using google's official sdk
+// gemini api client using google's official sdk - FIXED ROLES
 class GeminiClient(private val apiKey: String, private val modelName: String) : LLMProvider {
 
     private val generativeModel = GenerativeModel(
@@ -19,9 +19,12 @@ class GeminiClient(private val apiKey: String, private val modelName: String) : 
         conversationHistory: List<Pair<String, String>>
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            // Gemini is very strict about roles. It expects "user" and "model".
+            // Our app uses "user" and "assistant".
             val chat = generativeModel.startChat(
                 history = conversationHistory.map { (role, text) ->
-                    content(role) { text(text) }
+                    val geminiRole = if (role == "assistant") "model" else "user"
+                    content(geminiRole) { text(text) }
                 }
             )
 

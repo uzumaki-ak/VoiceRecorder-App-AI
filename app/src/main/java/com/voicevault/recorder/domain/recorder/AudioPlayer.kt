@@ -1,156 +1,142 @@
 package com.voicevault.recorder.domain.recorder
 
 import android.content.Context
-import android.media.MediaRecorder
-import android.os.Build
-import com.voicevault.recorder.utils.Constants
-import com.voicevault.recorder.utils.FileUtils
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
-// handles audio recording using mediarecorder
-class AudioRecorder(private val context: Context) {
+// handles audio playback with speed control and position tracking
+class AudioPlayer(private val context: Context) {
 
-    private var mediaRecorder: MediaRecorder? = null
-    private var recordingFile: File? = null
+    private var mediaPlayer: MediaPlayer? = null
 
-    private val _isRecording = MutableStateFlow(false)
-    val isRecording: StateFlow<Boolean> = _isRecording
+    private val _isPlaying = MutableStateFlow(false)
+    val isPlaying: StateFlow<Boolean> = _isPlaying
 
-    private val _isPaused = MutableStateFlow(false)
-    val isPaused: StateFlow<Boolean> = _isPaused
+    private val _currentPosition = MutableStateFlow(0L)
+    val currentPosition: StateFlow<Long> = _currentPosition
 
-    private val _recordingDuration = MutableStateFlow(0L)
-    val recordingDuration: StateFlow<Long> = _recordingDuration
+    private val _duration = MutableStateFlow(0L)
+    val duration: StateFlow<Long> = _duration
 
-    private var startTime = 0L
-    private var pausedDuration = 0L
+    private val _playbackSpeed = MutableStateFlow(1.0f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed
 
-    // starts a new recording with specified quality
-    fun startRecording(
-        fileName: String,
-        quality: Constants.RecordingQuality,
-        useSDCard: Boolean = false
-    ): File? {
-        try {
-            // create file for recording
-            recordingFile = FileUtils.createRecordingFile(context, fileName, useSDCard)
-
-            // create media recorder based on android version
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }
-
-            mediaRecorder?.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(quality.bitrate)
-                setAudioSamplingRate(quality.sampleRate)
-                setOutputFile(recordingFile?.absolutePath)
-
-                prepare()
-                start()
-
-                _isRecording.value = true
-                _isPaused.value = false
-                startTime = System.currentTimeMillis()
-            }
-
-            return recordingFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            releaseRecorder()
-            return null
-        }
-    }
-
-    // pauses current recording
-    fun pauseRecording() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mediaRecorder?.pause()
-                _isPaused.value = true
-                pausedDuration += System.currentTimeMillis() - startTime
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    // resumes paused recording
-    fun resumeRecording() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mediaRecorder?.resume()
-                _isPaused.value = false
-                startTime = System.currentTimeMillis()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    // stops and finalizes recording
-    fun stopRecording(): File? {
-        try {
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-            _isRecording.value = false
-            _isPaused.value = false
-            _recordingDuration.value = 0L
-
-            return recordingFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            releaseRecorder()
-            return null
-        }
-    }
-
-    // cancels recording and deletes file
-    fun cancelRecording() {
-        releaseRecorder()
-        recordingFile?.delete()
-        recordingFile = null
-    }
-
-    // gets current amplitude for waveform visualization
-    fun getMaxAmplitude(): Int {
+    // loads audio file for playback
+    fun load(file: File, useSpeaker: Boolean = false): Boolean {
         return try {
-            mediaRecorder?.maxAmplitude ?: 0
-        } catch (e: Exception) {
-            0
-        }
-    }
+            release()
 
-    // updates recording duration
-    fun updateDuration() {
-        if (_isRecording.value && !_isPaused.value) {
-            _recordingDuration.value = pausedDuration + (System.currentTimeMillis() - startTime)
-        }
-    }
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(
+                            if (useSpeaker) AudioAttributes.CONTENT_TYPE_MUSIC
+                            else AudioAttributes.CONTENT_TYPE_SPEECH
+                        )
+                        .setUsage(
+                            if (useSpeaker) AudioAttributes.USAGE_MEDIA
+                            else AudioAttributes.USAGE_VOICE_COMMUNICATION
+                        )
+                        .build()
+                )
 
-    private fun releaseRecorder() {
-        try {
-            mediaRecorder?.apply {
-                stop()
-                release()
+                setDataSource(file.absolutePath)
+                prepare()
+
+                _duration.value = duration.toLong()
+
+                setOnCompletionListener {
+                    _isPlaying.value = false
+                    _currentPosition.value = 0L
+                }
             }
+            true
         } catch (e: Exception) {
             e.printStackTrace()
-        } finally {
-            mediaRecorder = null
-            _isRecording.value = false
-            _isPaused.value = false
-            _recordingDuration.value = 0L
+            false
+        }
+    }
+
+    // starts or resumes playback
+    fun play() {
+        mediaPlayer?.apply {
+            if (!isPlaying) {
+                start()
+                _isPlaying.value = true
+            }
+        }
+    }
+
+    // pauses playback
+    fun pause() {
+        mediaPlayer?.apply {
+            if (isPlaying) {
+                pause()
+                _isPlaying.value = false
+            }
+        }
+    }
+
+    // seeks to specific position in milliseconds
+    fun seekTo(position: Long) {
+        mediaPlayer?.seekTo(position.toInt())
+        _currentPosition.value = position
+    }
+
+    // skips forward by milliseconds
+    fun skipForward(milliseconds: Long = 1000) {
+        mediaPlayer?.let {
+            val newPosition = (it.currentPosition + milliseconds).coerceAtMost(it.duration.toLong())
+            seekTo(newPosition)
+        }
+    }
+
+    // skips backward by milliseconds
+    fun skipBackward(milliseconds: Long = 1000) {
+        mediaPlayer?.let {
+            val newPosition = (it.currentPosition - milliseconds).coerceAtLeast(0)
+            seekTo(newPosition)
+        }
+    }
+
+    // sets playback speed
+    fun setSpeed(speed: Float) {
+        try {
+            mediaPlayer?.playbackParams = mediaPlayer?.playbackParams?.setSpeed(speed)!!
+            _playbackSpeed.value = speed
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // toggles repeat mode
+    fun setRepeat(repeat: Boolean) {
+        mediaPlayer?.isLooping = repeat
+    }
+
+    // updates current position for ui
+    fun updatePosition() {
+        mediaPlayer?.let {
+            _currentPosition.value = it.currentPosition.toLong()
+        }
+    }
+
+    // releases media player resources
+    fun release() {
+        try {
+            mediaPlayer?.apply {
+                if (isPlaying) stop()
+                release()
+            }
+            mediaPlayer = null
+            _isPlaying.value = false
+            _currentPosition.value = 0L
+            _duration.value = 0L
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

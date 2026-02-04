@@ -39,7 +39,7 @@ object Constants {
     val GROQ_MODELS = listOf("llama-3.3-70b-versatile", "mixtral-8x7b-32768")
 
     // gemini config - uses google sdk directly, no base url
-    val GEMINI_MODELS = listOf("gemini-2.0-flash-exp", "gemini-1.5-pro")
+    val GEMINI_MODELS = listOf("gemini-2.5-flash", "gemini-1.5-pro")
 
     // euron config
     const val EURON_BASE_URL = "https://api.euron.one/api/v1/euri/"
