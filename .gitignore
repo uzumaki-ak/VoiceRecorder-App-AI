@@ -74,3 +74,8 @@ google-services.json
 # Testing / coverage
 # =========================
 coverage/
+
+# =========================
+# Vosk Models
+# =========================
+app/src/main/assets/models/
